@@ -2,127 +2,135 @@
 using FI.APILogs.Filtering.Models;
 using System.Globalization;
 using System.Text.Json;
+using System.Configuration;
 
-Console.WriteLine("Enter Path of directory to process: ");
-var path = "C:\\APILogs\\Unified"; //ConfigurationManager.AppSettings["VeryImportantSetting"]);
-
-var fileName = Directory.GetFiles(path, "*.json");
-var claimsNumber = new string[] { "7003", "5008", "5009", "5010", "5011", "7004", "7002", "5007", "5006", "7001", "7000", "5015", "5014", "3012", "3013", "5016", "5012", "5013", "7900", "5018", "5017", "7800" };
-
-var peopleMgmtFilePath = Directory.GetFiles(path, "People.csv");
-List<ClaimPeopleRecord> peopleMgmtRecords = File.ReadLines(peopleMgmtFilePath[0]).Select((l, i) => new ClaimPeopleRecord(l, i)).ToList(); //File.ReadAllText(peopleMgmtFilePath.FirstOrDefault());
-
-var startTime = DateTime.Now;
-Console.WriteLine($"Program started at: ${startTime}");
-
-var managementReportFileName = $"{path}\\Output\\Management_Report_{DateTime.Now.ToString("MM-dd-yyyTHH-mm-ss")}.csv";
-var claimsReportFileName = $"{path}\\Output\\Claims_Report_{DateTime.Now.ToString("MM-dd-yyyTHH-mm-ss")}.csv";
-
-foreach (var file in fileName)
+internal class Program
 {
-    var fileContent = File.ReadAllText(file);
-    List<AuditLog>? data = JsonSerializer.Deserialize<List<AuditLog>>(fileContent);
-
-    if (data != null)
+    private static void Main(string[] args)
     {
-        Console.ForegroundColor = ConsoleColor.Yellow;
-        Console.WriteLine($"Processing file: {file} at {DateTime.Now}");
+        Console.WriteLine("Enter Path of directory to process: ");
+        var path = ConfigurationManager.AppSettings["DataFolderPath"];
 
-        var mipEvent = data.Where(d => d.RecordType == 43);
+        var fileName = Directory.GetFiles(path, "*.json");
+        var claimsNumber = new string[] { "7003", "5008", "5009", "5010", "5011", "7004", "7002", "5007", "5006", "7001", "7000", "5015", "5014", "3012", "3013", "5016", "5012", "5013", "7900", "5018", "5017", "7800" };
 
-        Console.WriteLine($"Total records found: {data.Count} and MIP events are {mipEvent.Count()}");
+        var peopleMgmtFilePath = Directory.GetFiles(path, ConfigurationManager.AppSettings["PeopleManifest"]);
+        List<ClaimPeopleRecord> peopleMgmtRecords = File.ReadLines(peopleMgmtFilePath[0]).Select((l, i) => new ClaimPeopleRecord(l, i)).ToList(); //File.ReadAllText(peopleMgmtFilePath.FirstOrDefault());
 
-        var claimsRecords = mipEvent.Where(m => Array.FindAll(claimsNumber, s => m.ItemName.Contains(s)).Length > 0).ToList();
+        var startTime = DateTime.Now;
+        Console.WriteLine($"Program started at: ${startTime}");
 
-        // Filter records
-        var report = FilterRecords(claimsRecords);
+        var managementReportFileName = $"{path}\\Output\\Management_Report_{DateTime.Now.ToString("MM-dd-yyyTHH-mm-ss")}.csv";
+        var claimsReportFileName = $"{path}\\Output\\Claims_Report_{DateTime.Now.ToString("MM-dd-yyyTHH-mm-ss")}.csv";
 
-        // Create output folder if not exists
-        if (!Directory.Exists($"{path}\\Output"))
+        foreach (var file in fileName)
         {
-            Directory.CreateDirectory($"{path}\\Output");
-        }
+            var fileContent = File.ReadAllText(file);
+            List<AuditLog>? data = JsonSerializer.Deserialize<List<AuditLog>>(fileContent);
 
-
-        if (report[0].Count() > 0)
-        {
-            using (StreamWriter writer = File.AppendText(managementReportFileName))
-            using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
+            if (data != null)
             {
-                csv.WriteRecords(report[0]);
-            }
-        }
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"Processing file: {file} at {DateTime.Now}");
 
-        if (report[1].Count() > 0)
-        {
-            using (StreamWriter writer = File.AppendText(claimsReportFileName))
-            using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
-            {
-                csv.WriteRecords(report[1]);
-            }
-        }
+                var mipEvent = data.Where(d => d.RecordType == 43);
 
-        Console.ForegroundColor = ConsoleColor.Green;
-        Console.WriteLine($"Processing completed at {DateTime.Now}");
-    }
-}
-Console.WriteLine($"Program completed at {DateTime.Now}. Total Execution time: {DateTime.Now.Subtract(startTime).TotalMinutes}");
-Console.ReadKey();
+                Console.WriteLine($"Total records found: {data.Count} and MIP events are {mipEvent.Count()}");
 
-List<MIPReport>[] FilterRecords(List<AuditLog> logs)
-{
-    var mipClaimReportPeople = new List<MIPReport>();
-    var mipClaimReportMgmt = new List<MIPReport>();
+                var claimsRecords = mipEvent.Where(m => Array.FindAll(claimsNumber, s => m.ItemName.Contains(s)).Length > 0).ToList();
 
-    logs.ForEach(l => {
-        var checkPerson = peopleMgmtRecords.FindAll(p => p.Email.Equals(l.Sender, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-        if (checkPerson != null)
-        {
-            if (checkPerson.Company.Equals("FNWL", StringComparison.OrdinalIgnoreCase) || checkPerson.Company.Equals("Exchange", StringComparison.OrdinalIgnoreCase))
-            {
-                mipClaimReportPeople.Add(new MIPReport()
+                // Filter records
+                var report = FilterRecords(claimsRecords);
+
+                // Create output folder if not exists
+                if (!Directory.Exists($"{path}\\Output"))
                 {
-                    CreationTime = l.CreationTime,
-                    ItemName = l.ItemName,
-                    LabelName = GetGenericLabel(l.LabelName),
-                    Receivers = l.Receivers,
-                    Sender = l.Sender,
-                    JobTitle = checkPerson.JobTitle,
-                    LOB = checkPerson.LOB,
-                    N3 = checkPerson.N3,
-                    Company = checkPerson.Company
-                });
-            }
-            else if (checkPerson.Company.Equals("Management", StringComparison.OrdinalIgnoreCase))
-            {
-                mipClaimReportMgmt.Add(new MIPReport()
+                    Directory.CreateDirectory($"{path}\\Output");
+                }
+
+
+                if (report[0].Count() > 0)
                 {
-                    CreationTime = l.CreationTime,
-                    ItemName = l.ItemName,
-                    LabelName = l.LabelName,
-                    Receivers = l.Receivers,
-                    Sender = l.Sender,
-                    JobTitle = checkPerson.JobTitle,
-                    LOB = checkPerson.LOB,
-                    N3 = checkPerson.N3,
-                    Company = checkPerson.Company
-                });
+                    using (StreamWriter writer = File.AppendText(managementReportFileName))
+                    using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
+                    {
+                        csv.WriteRecords(report[0]);
+                    }
+                }
+
+                if (report[1].Count() > 0)
+                {
+                    using (StreamWriter writer = File.AppendText(claimsReportFileName))
+                    using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
+                    {
+                        csv.WriteRecords(report[1]);
+                    }
+                }
+
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine($"Processing completed at {DateTime.Now}");
             }
         }
-    });
+        Console.WriteLine($"Program completed at {DateTime.Now}. Total Execution time: {DateTime.Now.Subtract(startTime).TotalMinutes}");
+        Console.ReadKey();
 
-    return new[] { mipClaimReportMgmt, mipClaimReportPeople };
-}
+        List<MIPReport>[] FilterRecords(List<AuditLog> logs)
+        {
+            var mipClaimReportPeople = new List<MIPReport>();
+            var mipClaimReportMgmt = new List<MIPReport>();
 
-string GetGenericLabel(string labelName)
-{
-    switch (labelName)
-    {
-        case "Personal Information (Confidential)":
-            return "Confidential Personal Information";
-        case "Sensitive Personal Information (Highly Confidential)":
-            return "Highly Confidential Sensitive Personal Information";
-        default:
-            return labelName;
+            logs.ForEach(l =>
+            {
+                var checkPerson = peopleMgmtRecords.FindAll(p => p.Email.Equals(l.Sender, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+                if (checkPerson != null)
+                {
+                    if (checkPerson.Company.Equals("FNWL", StringComparison.OrdinalIgnoreCase) || checkPerson.Company.Equals("Exchange", StringComparison.OrdinalIgnoreCase))
+                    {
+                        mipClaimReportPeople.Add(new MIPReport()
+                        {
+                            Date = l.CreationTime,
+                            Subject = l.ItemName,
+                            LabelName = GetGenericLabel(l.LabelName),
+                            Receivers = l.Receivers,
+                            Sender = l.Sender,
+                            JobTitle = checkPerson.JobTitle,
+                            LOB = checkPerson.LOB,
+                            SenderManager = checkPerson.N3,
+                            Company = checkPerson.Company
+                        });
+                    }
+                    else if (checkPerson.Company.Equals("Management", StringComparison.OrdinalIgnoreCase))
+                    {
+                        mipClaimReportMgmt.Add(new MIPReport()
+                        {
+                            Date = l.CreationTime,
+                            Subject = l.ItemName,
+                            LabelName = l.LabelName,
+                            Receivers = l.Receivers,
+                            Sender = l.Sender,
+                            JobTitle = checkPerson.JobTitle,
+                            LOB = checkPerson.LOB,
+                            SenderManager = checkPerson.N3,
+                            Company = checkPerson.Company
+                        });
+                    }
+                }
+            });
+
+            return new[] { mipClaimReportMgmt, mipClaimReportPeople };
+        }
+
+        string GetGenericLabel(string labelName)
+        {
+            switch (labelName)
+            {
+                case "Personal Information (Confidential)":
+                    return "Confidential Personal Information";
+                case "Sensitive Personal Information (Highly Confidential)":
+                    return "Highly Confidential Sensitive Personal Information";
+                default:
+                    return labelName;
+            }
+        }
     }
 }

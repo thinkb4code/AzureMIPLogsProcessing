@@ -9,20 +9,20 @@ namespace FI.APILogs.Filtering.Models
 {
     internal class MIPReport
     {
-        [JsonPropertyName("CreationTime")]
-        public DateTime? CreationTime { get; set; }
+        [JsonPropertyName("Date")]
+        public DateTime? Date { get; set; }
 
-        [JsonPropertyName("ItemName")]
-        public string? ItemName { get; set; }
-
-        [JsonPropertyName("LabelName")]
-        public string? LabelName { get; set; }
+        [JsonPropertyName("Sender")]
+        public string? Sender { get; set; }
 
         [JsonPropertyName("Receivers")]
         public List<string>? Receivers { get; set; }
 
-        [JsonPropertyName("Sender")]
-        public string? Sender { get; set; }
+        [JsonPropertyName("Subject")]
+        public string? Subject { get; set; }
+
+        [JsonPropertyName("Label Name")]
+        public string? LabelName { get; set; }
 
         [JsonPropertyName("Job Title")]
         public string? JobTitle { get; set; }
@@ -30,8 +30,8 @@ namespace FI.APILogs.Filtering.Models
         [JsonPropertyName("LOB")]
         public string? LOB { get; set; }
 
-        [JsonPropertyName("N-3")]
-        public string? N3 { get; set; }
+        [JsonPropertyName("Sender Manager")]
+        public string? SenderManager { get; set; }
 
         [JsonPropertyName("Company")]
         public string? Company { get; set; }
