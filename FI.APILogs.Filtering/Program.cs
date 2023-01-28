@@ -1,23 +1,22 @@
-﻿// See https://aka.ms/new-console-template for more information
-using CsvHelper;
+﻿using CsvHelper;
 using FI.APILogs.Filtering.Models;
 using System.Globalization;
-using System.Linq;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 Console.WriteLine("Enter Path of directory to process: ");
-// var path = Console.ReadLine();
-var path = "C:\\Users\\mrana\\OneDrive\\Documents\\Farmers Insurance";
+var path = "C:\\APILogs\\Unified"; //ConfigurationManager.AppSettings["VeryImportantSetting"]);
 
 var fileName = Directory.GetFiles(path, "*.json");
 var claimsNumber = new string[] { "7003", "5008", "5009", "5010", "5011", "7004", "7002", "5007", "5006", "7001", "7000", "5015", "5014", "3012", "3013", "5016", "5012", "5013", "7900", "5018", "5017", "7800" };
 
-var peopleMgmtFilePath = Directory.GetFiles(path, "Management_Claims.csv");
+var peopleMgmtFilePath = Directory.GetFiles(path, "People.csv");
 List<ClaimPeopleRecord> peopleMgmtRecords = File.ReadLines(peopleMgmtFilePath[0]).Select((l, i) => new ClaimPeopleRecord(l, i)).ToList(); //File.ReadAllText(peopleMgmtFilePath.FirstOrDefault());
 
 var startTime = DateTime.Now;
 Console.WriteLine($"Program started at: ${startTime}");
+
+var managementReportFileName = $"{path}\\Output\\Management_Report_{DateTime.Now.ToString("MM-dd-yyyTHH-mm-ss")}.csv";
+var claimsReportFileName = $"{path}\\Output\\Claims_Report_{DateTime.Now.ToString("MM-dd-yyyTHH-mm-ss")}.csv";
 
 foreach (var file in fileName)
 {
@@ -35,10 +34,7 @@ foreach (var file in fileName)
 
         var claimsRecords = mipEvent.Where(m => Array.FindAll(claimsNumber, s => m.ItemName.Contains(s)).Length > 0).ToList();
 
-        // Filter Mgmt Records
-        //var mgmtRecords = FilterRecords(claimsRecords, new[] { "Management" });
-        //// Filter Claims Records
-        //var peopleRecords = FilterRecords(claimsRecords, new[] { "FNWL", "Exchange" });
+        // Filter records
         var report = FilterRecords(claimsRecords);
 
         // Create output folder if not exists
@@ -50,7 +46,7 @@ foreach (var file in fileName)
 
         if (report[0].Count() > 0)
         {
-            using (StreamWriter writer = File.AppendText($"{path}\\Output\\Management_Report_{DateTime.Now.ToString("MM-dd-yyyTHH-mm-ss")}.csv"))
+            using (StreamWriter writer = File.AppendText(managementReportFileName))
             using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
             {
                 csv.WriteRecords(report[0]);
@@ -59,7 +55,7 @@ foreach (var file in fileName)
 
         if (report[1].Count() > 0)
         {
-            using (StreamWriter writer = File.AppendText($"{path}\\Output\\People_Report_{DateTime.Now.ToString("MM-dd-yyyTHH-mm-ss")}.csv"))
+            using (StreamWriter writer = File.AppendText(claimsReportFileName))
             using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
             {
                 csv.WriteRecords(report[1]);
@@ -69,15 +65,14 @@ foreach (var file in fileName)
         Console.ForegroundColor = ConsoleColor.Green;
         Console.WriteLine($"Processing completed at {DateTime.Now}");
     }
-
-    Console.WriteLine($"Program completed at {DateTime.Now}. Total Execution time: {DateTime.Now.Subtract(startTime).TotalMinutes}");
-    Console.ReadKey();
 }
+Console.WriteLine($"Program completed at {DateTime.Now}. Total Execution time: {DateTime.Now.Subtract(startTime).TotalMinutes}");
+Console.ReadKey();
 
-List<MIPClaimReport>[] FilterRecords(List<AuditLog> logs)
+List<MIPReport>[] FilterRecords(List<AuditLog> logs)
 {
-    var mipClaimReportPeople = new List<MIPClaimReport>();
-    var mipClaimReportMgmt = new List<MIPClaimReport>();
+    var mipClaimReportPeople = new List<MIPReport>();
+    var mipClaimReportMgmt = new List<MIPReport>();
 
     logs.ForEach(l => {
         var checkPerson = peopleMgmtRecords.FindAll(p => p.Email.Equals(l.Sender, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
@@ -85,7 +80,8 @@ List<MIPClaimReport>[] FilterRecords(List<AuditLog> logs)
         {
             if (checkPerson.Company.Equals("FNWL", StringComparison.OrdinalIgnoreCase) || checkPerson.Company.Equals("Exchange", StringComparison.OrdinalIgnoreCase))
             {
-                mipClaimReportPeople.Add(new MIPClaimReport() {
+                mipClaimReportPeople.Add(new MIPReport()
+                {
                     CreationTime = l.CreationTime,
                     ItemName = l.ItemName,
                     LabelName = GetGenericLabel(l.LabelName),
@@ -96,8 +92,10 @@ List<MIPClaimReport>[] FilterRecords(List<AuditLog> logs)
                     N3 = checkPerson.N3,
                     Company = checkPerson.Company
                 });
-            }else if(checkPerson.Company.Equals("Management", StringComparison.OrdinalIgnoreCase)){
-                mipClaimReportMgmt.Add(new MIPClaimReport()
+            }
+            else if (checkPerson.Company.Equals("Management", StringComparison.OrdinalIgnoreCase))
+            {
+                mipClaimReportMgmt.Add(new MIPReport()
                 {
                     CreationTime = l.CreationTime,
                     ItemName = l.ItemName,
@@ -112,7 +110,7 @@ List<MIPClaimReport>[] FilterRecords(List<AuditLog> logs)
             }
         }
     });
-    
+
     return new[] { mipClaimReportMgmt, mipClaimReportPeople };
 }
 
@@ -121,7 +119,7 @@ string GetGenericLabel(string labelName)
     switch (labelName)
     {
         case "Personal Information (Confidential)":
-            return "Personal Information (Confidential)";
+            return "Confidential Personal Information";
         case "Sensitive Personal Information (Highly Confidential)":
             return "Highly Confidential Sensitive Personal Information";
         default:

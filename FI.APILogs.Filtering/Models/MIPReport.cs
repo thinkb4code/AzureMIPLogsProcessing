@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace FI.APILogs.Filtering.Models
 {
-    internal class MIPClaimReport
+    internal class MIPReport
     {
         [JsonPropertyName("CreationTime")]
         public DateTime? CreationTime { get; set; }

@@ -37,7 +37,8 @@ namespace FI.APILogs.Filtering.Models
             {
                 N3 = data[3];
                 Company = data[4];
-            }else
+            }
+            else
             {
                 N3 = string.Concat(data[3], ",", data[4]);
                 Company = data[5];
