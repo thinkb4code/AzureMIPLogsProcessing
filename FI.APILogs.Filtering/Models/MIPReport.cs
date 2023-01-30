@@ -16,7 +16,7 @@ namespace FI.APILogs.Filtering.Models
         public string? Sender { get; set; }
 
         [JsonPropertyName("Receivers")]
-        public List<string>? Receivers { get; set; }
+        public string? Receivers { get; set; }
 
         [JsonPropertyName("Subject")]
         public string? Subject { get; set; }

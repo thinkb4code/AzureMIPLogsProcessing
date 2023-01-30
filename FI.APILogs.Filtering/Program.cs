@@ -1,8 +1,10 @@
 ﻿using CsvHelper;
+using CsvHelper.Configuration;
 using FI.APILogs.Filtering.Models;
-using System.Globalization;
-using System.Text.Json;
 using System.Configuration;
+using System.Globalization;
+using System.Text;
+using System.Text.Json;
 
 internal class Program
 {
@@ -22,6 +24,7 @@ internal class Program
 
         var managementReportFileName = $"{path}\\Output\\Management_Report_{DateTime.Now.ToString("MM-dd-yyyTHH-mm-ss")}.csv";
         var claimsReportFileName = $"{path}\\Output\\Claims_Report_{DateTime.Now.ToString("MM-dd-yyyTHH-mm-ss")}.csv";
+        bool printHeader = true;
 
         foreach (var file in fileName)
         {
@@ -48,11 +51,17 @@ internal class Program
                     Directory.CreateDirectory($"{path}\\Output");
                 }
 
+                var csvConfig = new CsvConfiguration(CultureInfo.InvariantCulture)
+                {
+                    HasHeaderRecord = printHeader,
+                    Delimiter = ",",
+                    Encoding = Encoding.UTF8
+                };
 
                 if (report[0].Count() > 0)
                 {
                     using (StreamWriter writer = File.AppendText(managementReportFileName))
-                    using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
+                    using (var csv = new CsvWriter(writer, csvConfig))
                     {
                         csv.WriteRecords(report[0]);
                     }
@@ -61,7 +70,7 @@ internal class Program
                 if (report[1].Count() > 0)
                 {
                     using (StreamWriter writer = File.AppendText(claimsReportFileName))
-                    using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
+                    using (var csv = new CsvWriter(writer, csvConfig))
                     {
                         csv.WriteRecords(report[1]);
                     }
@@ -70,6 +79,7 @@ internal class Program
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.WriteLine($"Processing completed at {DateTime.Now}");
             }
+            printHeader = false; 
         }
         Console.WriteLine($"Program completed at {DateTime.Now}. Total Execution time: {DateTime.Now.Subtract(startTime).TotalMinutes}");
         Console.ReadKey();
@@ -91,7 +101,7 @@ internal class Program
                             Date = l.CreationTime,
                             Subject = l.ItemName,
                             LabelName = GetGenericLabel(l.LabelName),
-                            Receivers = l.Receivers,
+                            Receivers = String.Join("; ", l.Receivers),
                             Sender = l.Sender,
                             JobTitle = checkPerson.JobTitle,
                             LOB = checkPerson.LOB,
@@ -106,7 +116,7 @@ internal class Program
                             Date = l.CreationTime,
                             Subject = l.ItemName,
                             LabelName = l.LabelName,
-                            Receivers = l.Receivers,
+                            Receivers = String.Join("; ", l.Receivers),
                             Sender = l.Sender,
                             JobTitle = checkPerson.JobTitle,
                             LOB = checkPerson.LOB,
