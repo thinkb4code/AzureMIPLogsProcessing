@@ -10,7 +10,7 @@ namespace FI.APILogs.Filtering.Models
     internal class MIPReport
     {
         [JsonPropertyName("Date")]
-        public DateTime? Date { get; set; }
+        public string? Date { get; set; }
 
         [JsonPropertyName("Sender")]
         public string? Sender { get; set; }

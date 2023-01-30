@@ -43,7 +43,8 @@ internal class Program
                 var claimsRecords = mipEvent.Where(m => Array.FindAll(claimsNumber, s => m.ItemName.Contains(s)).Length > 0).ToList();
 
                 // Filter records
-                var report = FilterRecords(claimsRecords);
+                string date = file.Replace(path+"\\", string.Empty).Replace("Audit.Exchange_", string.Empty).Replace("_12-00-00.json", string.Empty);
+                var report = FilterRecords(claimsRecords, date);
 
                 // Create output folder if not exists
                 if (!Directory.Exists($"{path}\\Output"))
@@ -84,7 +85,7 @@ internal class Program
         Console.WriteLine($"Program completed at {DateTime.Now}. Total Execution time: {DateTime.Now.Subtract(startTime).TotalMinutes}");
         Console.ReadKey();
 
-        List<MIPReport>[] FilterRecords(List<AuditLog> logs)
+        List<MIPReport>[] FilterRecords(List<AuditLog> logs, string date)
         {
             var mipClaimReportPeople = new List<MIPReport>();
             var mipClaimReportMgmt = new List<MIPReport>();
@@ -98,7 +99,7 @@ internal class Program
                     {
                         mipClaimReportPeople.Add(new MIPReport()
                         {
-                            Date = l.CreationTime,
+                            Date = date,
                             Subject = l.ItemName,
                             LabelName = GetGenericLabel(l.LabelName),
                             Receivers = String.Join("; ", l.Receivers),
@@ -113,7 +114,7 @@ internal class Program
                     {
                         mipClaimReportMgmt.Add(new MIPReport()
                         {
-                            Date = l.CreationTime,
+                            Date = date,
                             Subject = l.ItemName,
                             LabelName = l.LabelName,
                             Receivers = String.Join("; ", l.Receivers),
