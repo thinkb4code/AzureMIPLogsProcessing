@@ -16,8 +16,8 @@ internal class Program
         var fileName = Directory.GetFiles(path, "*.json");
         var claimsNumber = new string[] { "7003", "5008", "5009", "5010", "5011", "7004", "7002", "5007", "5006", "7001", "7000", "5015", "5014", "3012", "3013", "5016", "5012", "5013", "7900", "5018", "5017", "7800" };
 
-        var peopleMgmtFilePath = Directory.GetFiles(path, ConfigurationManager.AppSettings["PeopleManifest"]);
-        List<ClaimPeopleRecord> peopleMgmtRecords = File.ReadLines(peopleMgmtFilePath[0]).Select((l, i) => new ClaimPeopleRecord(l, i)).ToList(); //File.ReadAllText(peopleMgmtFilePath.FirstOrDefault());
+        var peopleFilePath = Directory.GetFiles(path, ConfigurationManager.AppSettings["PeopleManifest"]);
+        List<ClaimPeopleRecord> peopleRecords = File.ReadLines(peopleFilePath[0]).Select((l, i) => new ClaimPeopleRecord(l, i)).ToList(); //File.ReadAllText(peopleFilePath.FirstOrDefault());
 
         var startTime = DateTime.Now;
         Console.WriteLine($"Program started at: ${startTime}");
@@ -36,15 +36,17 @@ internal class Program
                 Console.ForegroundColor = ConsoleColor.Yellow;
                 Console.WriteLine($"Processing file: {file} at {DateTime.Now}");
 
-                var mipEvent = data.Where(d => d.RecordType == 43);
+                var mipEvents = data.Where(d => d.RecordType == 43);
 
-                Console.WriteLine($"Total records found: {data.Count} and MIP events are {mipEvent.Count()}");
+                Console.WriteLine($"Total records found: {data.Count} and MIP events are {mipEvents.Count()}");
 
-                var claimsRecords = mipEvent.Where(m => Array.FindAll(claimsNumber, s => m.ItemName.Contains(s)).Length > 0).ToList();
+                // Match on claim number prefixes in the email subject line
+                //var claimsRecords = mipEvents.Where(m => Array.FindAll(claimsNumber, s => m.ItemName.Contains(s)).Length > 0).ToList();
 
                 // Filter records
                 string date = file.Replace(path+"\\", string.Empty).Replace("Audit.Exchange_", string.Empty).Replace("_12-00-00.json", string.Empty);
-                var report = FilterRecords(claimsRecords, date);
+                //var report = FilterRecords(claimsRecords, date);
+                var report = FilterRecords(mipEvents.ToList(), date);
 
                 // Create output folder if not exists
                 if (!Directory.Exists($"{path}\\Output"))
@@ -87,17 +89,17 @@ internal class Program
 
         List<MIPReport>[] FilterRecords(List<AuditLog> logs, string date)
         {
-            var mipClaimReportPeople = new List<MIPReport>();
-            var mipClaimReportMgmt = new List<MIPReport>();
+            var claimsReport = new List<MIPReport>();
+            var mgmtReport = new List<MIPReport>();
 
             logs.ForEach(l =>
             {
-                var checkPerson = peopleMgmtRecords.FindAll(p => p.Email.Equals(l.Sender, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+                var checkPerson = peopleRecords.FindAll(p => p.Email.Equals(l.Sender, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
                 if (checkPerson != null)
                 {
                     if (checkPerson.Company.Equals("FNWL", StringComparison.OrdinalIgnoreCase) || checkPerson.Company.Equals("Exchange", StringComparison.OrdinalIgnoreCase))
                     {
-                        mipClaimReportPeople.Add(new MIPReport()
+                        claimsReport.Add(new MIPReport()
                         {
                             Date = date,
                             Subject = l.ItemName,
@@ -112,7 +114,7 @@ internal class Program
                     }
                     else if (checkPerson.Company.Equals("Management", StringComparison.OrdinalIgnoreCase))
                     {
-                        mipClaimReportMgmt.Add(new MIPReport()
+                        mgmtReport.Add(new MIPReport()
                         {
                             Date = date,
                             Subject = l.ItemName,
@@ -128,7 +130,7 @@ internal class Program
                 }
             });
 
-            return new[] { mipClaimReportMgmt, mipClaimReportPeople };
+            return new[] { mgmtReport, claimsReport };
         }
 
         string GetGenericLabel(string labelName)
