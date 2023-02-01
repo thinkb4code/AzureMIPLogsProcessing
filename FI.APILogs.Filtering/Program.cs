@@ -102,7 +102,7 @@ internal class Program
                         claimsReport.Add(new MIPReport()
                         {
                             Date = date,
-                            Subject = l.ItemName,
+                            Subject = l.ItemName.Replace("\n", " "),
                             LabelName = GetGenericLabel(l.LabelName),
                             Receivers = String.Join("; ", l.Receivers),
                             Sender = l.Sender,
@@ -117,7 +117,7 @@ internal class Program
                         mgmtReport.Add(new MIPReport()
                         {
                             Date = date,
-                            Subject = l.ItemName,
+                            Subject = l.ItemName.Replace("\n", " "),
                             LabelName = GetGenericLabel(l.LabelName),
                             Receivers = String.Join("; ", l.Receivers),
                             Sender = l.Sender,
