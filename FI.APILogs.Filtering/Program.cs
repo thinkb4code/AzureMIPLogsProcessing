@@ -118,7 +118,7 @@ internal class Program
                         {
                             Date = date,
                             Subject = l.ItemName.Replace("\n", " "),
-                            LabelName = GetGenericLabel(l.LabelName),
+                            LabelName = GetGenericLabel(l.LabelId),
                             Receivers = String.Join("; ", l.Receivers),
                             Sender = l.Sender,
                             JobTitle = checkPerson.JobTitle,
