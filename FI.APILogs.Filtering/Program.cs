@@ -103,7 +103,7 @@ internal class Program
                         {
                             Date = date,
                             Subject = l.ItemName.Replace("\n", " "),
-                            LabelName = GetGenericLabel(l.LabelName),
+                            LabelName = GetGenericLabel(l.LabelId),
                             Receivers = String.Join("; ", l.Receivers),
                             Sender = l.Sender,
                             JobTitle = checkPerson.JobTitle,
@@ -133,16 +133,24 @@ internal class Program
             return new[] { mgmtReport, claimsReport };
         }
 
-        string GetGenericLabel(string labelName)
+        string GetGenericLabel(string labelId)
         {
-            switch (labelName)
+            switch (labelId)
             {
-                case "Personal Information (Confidential)":
+                case "bb2efefb-464c-4091-bdae-906d0eb48c19":
+                    return "Public";
+                case "3d57c56a-3489-401f-8ad7-eb0ac8309de4":
+                    return "Proprietary";
+                case "bbedcbcb-ab54-401f-bf77-cdeb80bf94b4":
+                    return "Confidential";
+                case "48016cbc-46d7-4f4f-a78e-0c4d5ab7be9e":
                     return "Confidential Personal Information";
-                case "Sensitive Personal Information (Highly Confidential)":
+                case "890c764a-bed2-40f7-a031-1e0531882b10":
+                    return "Highly Confidential";
+                case "ad7b2396-85f7-4b7e-ad67-9b01f313d350":
                     return "Highly Confidential Sensitive Personal Information";
                 default:
-                    return labelName;
+                    return "";
             }
         }
     }
