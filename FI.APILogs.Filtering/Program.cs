@@ -3,6 +3,7 @@ using CsvHelper.Configuration;
 using FI.APILogs.Filtering.Models;
 using System.Configuration;
 using System.Globalization;
+using System.Reflection.Emit;
 using System.Text;
 using System.Text.Json;
 
@@ -95,7 +96,7 @@ internal class Program
             logs.ForEach(l =>
             {
                 var checkPerson = peopleRecords.FindAll(p => p.Email.Equals(l.Sender, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-                if (checkPerson != null)
+                if (checkPerson != null && !checkPerson.LOB.ToLower().Contains("executive"))
                 {
                     if (checkPerson.Company.Equals("FNWL", StringComparison.OrdinalIgnoreCase) || checkPerson.Company.Equals("Exchange", StringComparison.OrdinalIgnoreCase))
                     {
@@ -107,7 +108,7 @@ internal class Program
                             Receivers = String.Join("; ", l.Receivers),
                             Sender = l.Sender,
                             JobTitle = checkPerson.JobTitle,
-                            LOB = checkPerson.LOB,
+                            LOB = GetNormalLob(checkPerson.LOB),
                             SenderManager = checkPerson.N3,
                             Company = checkPerson.Company
                         });
@@ -151,6 +152,28 @@ internal class Program
                     return "Highly Confidential Sensitive Personal Information";
                 default:
                     return "";
+            }
+        }
+
+        string GetNormalLob(string lob)
+        {
+            switch (lob.Trim().ToLower())
+            {
+                case "bristol west":
+                    return "Bristol West";
+                case "claims auto operations":
+                    return "Auto";
+                case "claims blo":
+                    return "BLO";
+                case "claims business insurance":
+                    return "Business";
+                case "claims property":
+                case "claims workspace solutions":
+                    return "Property";
+                case "claims shared services":
+                    return "Shared Services";
+                default:
+                    return "Miscellaneous";
             }
         }
     }
