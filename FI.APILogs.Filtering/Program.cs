@@ -172,8 +172,19 @@ internal class Program
                     return "Property";
                 case "claims shared services":
                     return "Shared Services";
-                default:
+                case "claims compliance":
+                case "claims customer experience":
+                case "claims executives":
+                case "claims legal services":
+                case "claims strategy":
+                case "farmers brokerered solutions":
+                case "farmers new world life":
+                case "finance":
+                case "office of general counsel":
+                case "service operations":
                     return "Miscellaneous";
+                default:
+                    return string.Empty;
             }
         }
     }
