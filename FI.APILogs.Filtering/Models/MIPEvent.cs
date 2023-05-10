@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace FI.APILogs.Filtering.Models
 {
-    internal class MIPReport
+    internal class MIPEvent
     {
         [JsonPropertyName("Date")]
         public string? Date { get; set; }

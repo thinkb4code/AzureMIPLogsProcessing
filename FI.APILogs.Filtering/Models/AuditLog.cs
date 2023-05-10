@@ -65,5 +65,26 @@ namespace FI.APILogs.Filtering.Models
 
         [JsonPropertyName("Sender")]
         public string? Sender { get; set; }
+
+        //[JsonPropertyName("Item")]
+        //public AuditLogItem? Item { get; set; }
+    }
+
+    internal class AuditLogItem
+    {
+        [JsonPropertyName("Id")]
+        public string? Id { get; set; }
+
+        [JsonPropertyName("InternetMessageId")]
+        public string? InternetMessageId { get; set; }
+
+        [JsonPropertyName("IsRecord")]
+        public string? IsRecord { get; set; }
+
+        [JsonPropertyName("SizeInBytes")]
+        public string? SizeInBytes { get; set; }
+
+        [JsonPropertyName("Subject")]
+        public string? Subject { get; set; }        
     }
 }

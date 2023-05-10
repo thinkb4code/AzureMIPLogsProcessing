@@ -20,12 +20,13 @@ internal class Program
         var peopleFilePath = Directory.GetFiles(path, ConfigurationManager.AppSettings["PeopleManifest"]);
         List<ClaimPeopleRecord> peopleRecords = File.ReadLines(peopleFilePath[0]).Select((l, i) => new ClaimPeopleRecord(l, i)).ToList(); //File.ReadAllText(peopleFilePath.FirstOrDefault());
 
-        var startTime = DateTime.Now;
-        Console.WriteLine($"Program started at: ${startTime}");
-
         var managementReportFileName = $"{path}\\Output\\Management_Report_{DateTime.Now.ToString("MM-dd-yyyTHH-mm-ss")}.csv";
         var claimsReportFileName = $"{path}\\Output\\Claims_Report_{DateTime.Now.ToString("MM-dd-yyyTHH-mm-ss")}.csv";
         bool printHeader = true;
+
+        var startTime = DateTime.Now;
+        
+        Console.WriteLine($"Labeled content report generation started at: ${startTime}");
 
         foreach (var file in fileName)
         {
@@ -46,7 +47,7 @@ internal class Program
 
                 // Filter records
                 string date = file.Replace(path+"\\", string.Empty).Replace("Audit.Exchange_", string.Empty).Replace("_12-00-00.json", string.Empty);
-                //var report = FilterRecords(claimsRecords, date);
+                //var report = FilterMIPRecords(claimsRecords, date);
                 var report = FilterRecords(mipEvents.ToList(), date);
 
                 // Create output folder if not exists
@@ -85,13 +86,79 @@ internal class Program
             }
             printHeader = false; 
         }
-        Console.WriteLine($"Program completed at {DateTime.Now}. Total Execution time: {DateTime.Now.Subtract(startTime).TotalMinutes}");
+        Console.WriteLine($"Labeled content report generation completed at {DateTime.Now}. Execution time: {DateTime.Now.Subtract(startTime).TotalMinutes}");
+        
+        // Build unlabeled content reports
+        managementReportFileName = $"{path}\\Output\\Management_Report_Unlabeled_{DateTime.Now.ToString("MM-dd-yyyTHH-mm-ss")}.csv";
+        claimsReportFileName = $"{path}\\Output\\Claims_Report_Unlabeled_{DateTime.Now.ToString("MM-dd-yyyTHH-mm-ss")}.csv";
+        printHeader = true;
+
+        startTime = DateTime.Now;
+        Console.WriteLine($"Unlabeled content report generation started at: ${startTime}");
+
+        foreach (var file in fileName)
+        {
+            var fileContent = File.ReadAllText(file);
+            List<AuditLog>? data = JsonSerializer.Deserialize<List<AuditLog>>(fileContent);
+
+            if (data != null)
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"Processing file: {file} at {DateTime.Now}");
+
+                var mipEvents = data.Where(d => d.RecordType == 2);
+
+                Console.WriteLine($"Total records found: {data.Count} and non-MIP events are {mipEvents.Count()}");
+
+                // Filter records
+                string date = file.Replace(path + "\\", string.Empty).Replace("Audit.Exchange_", string.Empty).Replace("_12-00-00.json", string.Empty);
+                //var report = FilterRecords(claimsRecords, date);
+                var report = FilterNonMIPRecords(mipEvents.ToList(), date);
+
+                // Create output folder if not exists
+                if (!Directory.Exists($"{path}\\Output"))
+                {
+                    Directory.CreateDirectory($"{path}\\Output");
+                }
+
+                var csvConfig = new CsvConfiguration(CultureInfo.InvariantCulture)
+                {
+                    HasHeaderRecord = printHeader,
+                    Delimiter = ",",
+                    Encoding = Encoding.UTF8
+                };
+
+                if (report[0].Count() > 0)
+                {
+                    using (StreamWriter writer = File.AppendText(managementReportFileName))
+                    using (var csv = new CsvWriter(writer, csvConfig))
+                    {
+                        csv.WriteRecords(report[0]);
+                    }
+                }
+
+                if (report[1].Count() > 0)
+                {
+                    using (StreamWriter writer = File.AppendText(claimsReportFileName))
+                    using (var csv = new CsvWriter(writer, csvConfig))
+                    {
+                        csv.WriteRecords(report[1]);
+                    }
+                }
+
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine($"Processing completed at {DateTime.Now}");
+            }
+            printHeader = false;
+        }
+        Console.WriteLine($"Unlabeled content report generation completed at {DateTime.Now}. Execution time: {DateTime.Now.Subtract(startTime).TotalMinutes}");
+
         Console.ReadKey();
 
-        List<MIPReport>[] FilterRecords(List<AuditLog> logs, string date)
+        List<MIPEvent>[] FilterMIPRecords(List<AuditLog> logs, string date)
         {
-            var claimsReport = new List<MIPReport>();
-            var mgmtReport = new List<MIPReport>();
+            var claimsReport = new List<MIPEvent>();
+            var mgmtReport = new List<MIPEvent>();
 
             logs.ForEach(l =>
             {
@@ -100,7 +167,7 @@ internal class Program
                 {
                     if (checkPerson.Company.Equals("FNWL", StringComparison.OrdinalIgnoreCase) || checkPerson.Company.Equals("Exchange", StringComparison.OrdinalIgnoreCase))
                     {
-                        claimsReport.Add(new MIPReport()
+                        claimsReport.Add(new MIPEvent()
                         {
                             Date = date,
                             Subject = l.ItemName.Replace("\n", " "),
@@ -115,12 +182,56 @@ internal class Program
                     }
                     else if (checkPerson.Company.Equals("Management", StringComparison.OrdinalIgnoreCase))
                     {
-                        mgmtReport.Add(new MIPReport()
+                        mgmtReport.Add(new MIPEvent()
                         {
                             Date = date,
                             Subject = l.ItemName.Replace("\n", " "),
                             LabelName = GetGenericLabel(l.LabelId),
                             Receivers = String.Join("; ", l.Receivers),
+                            Sender = l.Sender,
+                            JobTitle = checkPerson.JobTitle,
+                            LOB = checkPerson.LOB,
+                            SenderManager = checkPerson.N3,
+                            Company = checkPerson.Company
+                        });
+                    }
+                }
+            });
+
+            return new[] { mgmtReport, claimsReport };
+        }
+
+        List<NonMIPEvent>[] FilterNonMIPRecords(List<AuditLog> logs, string date)
+        {
+            var claimsReport = new List<NonMIPEvent>();
+            var mgmtReport = new List<NonMIPEvent>();
+
+            logs.ForEach(l =>
+            {
+                var checkPerson = peopleRecords.FindAll(p => p.Email.Equals(l.UserId, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+                if (checkPerson != null && !checkPerson.LOB.ToLower().Contains("executive"))
+                {
+                    if (checkPerson.Company.Equals("FNWL", StringComparison.OrdinalIgnoreCase) || checkPerson.Company.Equals("Exchange", StringComparison.OrdinalIgnoreCase))
+                    {
+                        claimsReport.Add(new NonMIPEvent()
+                        {
+                            Date = date,
+                            //Subject = l.Item.Subject,
+                            Operation = l.Operation,
+                            Sender = l.UserId,
+                            JobTitle = checkPerson.JobTitle,
+                            LOB = GetNormalLob(checkPerson.LOB),
+                            SenderManager = checkPerson.N3,
+                            Company = checkPerson.Company
+                        });
+                    }
+                    else if (checkPerson.Company.Equals("Management", StringComparison.OrdinalIgnoreCase))
+                    {
+                        mgmtReport.Add(new NonMIPEvent()
+                        {
+                            Date = date,
+                            //Subject = l.Item.Subject,
+                            Operation = l.Operation,
                             Sender = l.Sender,
                             JobTitle = checkPerson.JobTitle,
                             LOB = checkPerson.LOB,
@@ -180,8 +291,8 @@ internal class Program
                 //case "farmers brokerered solutions":
                 //case "farmers new world life":
                 case "finance":
-                //case "office of general counsel":
-                //case "service operations":
+                    //case "office of general counsel":
+                    //case "service operations":
                     return "Miscellaneous";
                 default:
                     return string.Empty;
